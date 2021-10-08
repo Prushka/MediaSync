@@ -1,2 +1,4 @@
 plexwebsocket
 pyatv
+redis
+pykodi
