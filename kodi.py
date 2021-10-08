@@ -17,6 +17,7 @@ async def play_movie(kodi: Kodi, movieid):
     movie = movie["moviedetails"]
     redis_populate.r.publish("saine", "movie " + json.dumps({"title": movie['label']}))
 
+
 async def play_tvshow(kodi: Kodi, tvshowid, season, episode):
     tvshow = await kodi.get_tv_show_details(tvshowid)
     tvshow = tvshow["tvshowdetails"]
@@ -24,20 +25,19 @@ async def play_tvshow(kodi: Kodi, tvshowid, season, episode):
                                                             "season": season,
                                                             "episode": episode}))
 
+
 async def main():
     await kc.connect()
     kodi = Kodi(kc)
 
-
     await kodi.ping()
     properties = await kodi.get_application_properties(["name", "version"])
-
 
     movies = await kodi.get_movies()
     tvshows = await kodi.get_tv_shows()
     for movie in movies['movies']:
         print(movie)
-    print("="*10)
+    print("=" * 10)
     for tvshow in tvshows['tvshows']:
         print(tvshow)
         # for i in range(0, 10):
@@ -50,7 +50,7 @@ async def main():
     # await kodi.play_item({"movieid":2})
     # await kodi.play_item({"episodeid": 112})
     # await play_movie(kodi, 150)
-    await play_tvshow(kodi, 102,1,9)
+    await play_tvshow(kodi, 102, 1, 9)
     await kc.close()
     # await kodi.volume_up()
     # await kodi.pause()

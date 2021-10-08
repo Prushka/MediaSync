@@ -46,10 +46,6 @@ class MediaPlayer:
     def get_identifier(self) -> str:
         pass
 
-    @abstractmethod
-    def get_media(self) -> Media:
-        pass
-
     def before_update(self):
         print(f"[{self.get_identifier()}] [{self.get_media_title()}: {self.get_state()} - {self.get_media_position()}]",
               end='')
@@ -72,10 +68,6 @@ class MediaPlayer:
 
     def is_paused(self):
         return self.get_state() == PlayerState.PAUSED
-
-    @abstractmethod
-    def keywords_match(self, args):
-        pass
 
     def get_media_json(self):
         return {"title": self.get_media_title(), "position": self.get_media_position(),
@@ -141,7 +133,7 @@ class PlexPlayer(MediaPlayer, ControllableMediaPlayer):
         return rating_key == self.rating_key
 
     def is_kodi(self):
-        return "kodi" in self.get_identifier().lower()
+        return "kodi" in self.get_identifier()
 
     def is_infuse_tvos(self):
         return self.product == "Infuse" and self.platform == "tvOS"
@@ -166,19 +158,6 @@ class PlexPlayer(MediaPlayer, ControllableMediaPlayer):
 
     def get_media(self):
         return self.session
-
-    def keywords_match(self, args: List[str]) -> bool:
-        id = self.get_identifier()
-        for arg in args:
-            if arg not in id:
-                return False
-        return True
-
-    def all_keywords_match(self, args: List[List[str]]):
-        for arg in args:
-            if self.keywords_match(arg):
-                return True, arg
-        return False, []
 
     def pause(self):
         # self.client.pause()
@@ -205,6 +184,9 @@ class PlexPlayer(MediaPlayer, ControllableMediaPlayer):
         #     self.play_media(player.get_media(), offset=player.get_media_position())
         #     del settings.plexPlayers[self.get_identifier()]
         # else:
+        if self.get_identifier() == player.get_identifier():
+            return
+
         self.refresh()
         print(f"{self.get_identifier()} SYNCING WITH {player.get_identifier()}")
         if abs(player.get_media_position() - self.get_media_position()) > 6:

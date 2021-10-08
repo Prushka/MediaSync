@@ -1,7 +1,9 @@
 import math
-
-
+import re
 
 if __name__ == '__main__':
-    a = "01"
-    print(a[0:2])
+    a = "$#123 ab !' the centimer$# $#abbbc$#"
+    m = re.findall('\$#(.+?)\$#', a)
+    if m:
+        for w in m:
+            print(w)
