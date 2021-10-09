@@ -189,7 +189,7 @@ class PlexPlayer(MediaPlayer, ControllableMediaPlayer):
 
         self.refresh()
         print(f"{self.get_identifier()} SYNCING WITH {player.get_identifier()}")
-        if abs(player.get_media_position() - self.get_media_position()) > 6:
+        if abs(player.get_media_position() - self.get_media_position()) > 3:
             self.seek(int(player.get_media_position()))
         if self.is_playing() and player.is_paused():
             self.pause()

@@ -25,7 +25,15 @@ async def engage_lock():
 
 
 def similar(a, b):
-    return SequenceMatcher(None, a, b).ratio()
+    # return SequenceMatcher(None, a, b).ratio()
+    score = 0
+    b = b.lower()
+    a = a.lower()
+    for word in b.split():  # for every word in your string
+        if word in a:  # if it is in your bigger string increase score
+            score += 1
+    print(a, b, score)
+    return score
 
 
 def get_args(s):
@@ -130,8 +138,8 @@ def print_help():
     play
     pause
     seek seconds
-    movie [movie_title]
-    show season episode [show_title]
+    movie movie_title
+    show season episode show_title
     exit
     Note:
     PLEASE EXIT USING exit command
