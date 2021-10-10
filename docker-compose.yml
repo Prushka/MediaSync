@@ -5,6 +5,6 @@ services:
     build:
       context: .
       dockerfile: "./Dockerfile"
-    container_name: plexsync
+    container_name: plex-sync
     environment:
       - "TZ=America/Toronto"

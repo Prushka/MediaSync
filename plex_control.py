@@ -1,20 +1,17 @@
 import asyncio
 import re
-import sys
-import threading
 import time
 import traceback
 from threading import Thread
 
 import redis
 from pykodi import get_kodi_connection, Kodi
-from colorama import init, Fore
 
 r = redis.Redis(host='cloud.muddy.ca', port=6399, db=0, password="vWw@U4mzCw2am02iDFYp")
 
 lock = False
 EVERY = 0.1
-init(convert=True)
+UPDATE_INTERVAL = 3600
 previous_print = ""
 
 
@@ -60,7 +57,7 @@ class KodiControlledPlayer:
     async def update(self):
         self.movies = await self.kodi.get_movies()
         self.tvshows = await self.kodi.get_tv_shows()
-        eprint(f"Fetched: {self.movies['limits']['total']} Movies & {self.tvshows['limits']['total']} Shows")
+        # eprint(f"Fetched: {self.movies['limits']['total']} Movies & {self.tvshows['limits']['total']} Shows")
 
     async def connect(self):
         await self.kc.connect()
@@ -80,7 +77,7 @@ class KodiControlledPlayer:
                 await self.handler(message)
             time.sleep(EVERY)
             self.counter += EVERY
-            if self.counter > 10:
+            if self.counter > UPDATE_INTERVAL:
                 self.counter = 0
                 await self.update()
 
