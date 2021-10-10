@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  plexsync:
+    build:
+      context: .
+      dockerfile: "./Dockerfile"
+    container_name: plexsync
+    environment:
+      - "TZ=America/Toronto"

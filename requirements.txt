@@ -2,3 +2,4 @@ plexwebsocket
 pyatv
 redis
 pykodi
+plexapi

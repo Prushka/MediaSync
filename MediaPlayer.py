@@ -1,9 +1,5 @@
-import json
-import time
 from abc import abstractmethod
 from enum import Enum
-from pprint import pprint
-from typing import List
 
 from plexapi.client import PlexClient
 from plexapi.media import Session, Media
