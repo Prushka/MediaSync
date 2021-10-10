@@ -104,7 +104,7 @@ async def main():
 if __name__ == '__main__':
     # account = MyPlexAccount('szcezliwy@hotmail.com', 'NeQC[N4%Myd6-kc*')
     # saine = account.resource('marnie').connect()  # returns a PlexServer instance
-    print("hello world")
-    # redis_populate.flush()
-    # settings.init()
-    # settings.loop.run_until_complete(main())
+
+    redis_populate.flush()
+    settings.init()
+    settings.loop.run_until_complete(main())
