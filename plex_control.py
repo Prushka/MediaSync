@@ -21,7 +21,7 @@ previous_print = ""
 def eprint(text):
     global previous_print
     # print(*args, file=sys.stderr, **kwargs)
-    print('\e[A\e[kOutput\nCurrent state of the prompt', end='')
+    print(str(text))
     previous_print = str(text)
 
 
