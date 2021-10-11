@@ -3,3 +3,4 @@ pyatv
 redis
 pykodi
 plexapi
+colorama
