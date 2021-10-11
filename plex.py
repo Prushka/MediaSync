@@ -31,7 +31,6 @@ def update_session(payload):
     session_key = int(session_payload["sessionKey"])
     offset = int(session_payload["viewOffset"])
     rating_key = int(session_payload["ratingKey"])
-
     player = settings.find_player_by_session_key(session_key)
     if player is None:
         fetch_new_sessions()

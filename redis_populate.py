@@ -1,7 +1,7 @@
 import redis
 
 r = redis.Redis(host='cloud.muddy.ca', port=6399, db=0, password="vWw@U4mzCw2am02iDFYp")
-
+rp = r.pubsub()
 
 def my_handler(message):
     print('MY HANDLER: ', str(message['data'].decode("utf-8")))

@@ -1,11 +1,16 @@
 import asyncio
+import json
 import re
 import time
 import traceback
+from datetime import datetime
 from threading import Thread
 
 import redis
 from pykodi import get_kodi_connection, Kodi
+from colorama import init
+
+init(convert=True)
 
 r = redis.Redis(host='cloud.muddy.ca', port=6399, db=0, password="vWw@U4mzCw2am02iDFYp")
 
@@ -46,12 +51,23 @@ def get_args(s):
 class KodiControlledPlayer:
     def __init__(self):
         self.kc = get_kodi_connection("localhost", "8080", None, "kodi", "0723")
-        self.counter = 0
+        self.update_library_counter = 0
+        self.update_title_counter = 0
+        self.players = {}
+        self.latest_update_came_at = datetime.now()
 
     async def update(self):
         self.movies = await self.kodi.get_movies()
         self.tvshows = await self.kodi.get_tv_shows()
         # eprint(f"Fetched: {self.movies['limits']['total']} Movies & {self.tvshows['limits']['total']} Shows")
+
+    def print_title(self):
+        s = ""
+        for key, value in self.players.items():
+            view_percentage = round(int(value['position']) / int(value['duration'])*100, 1)
+            s += f"[{key} {value['state']}:{value['title']} {view_percentage}%] "
+        s += f"Last Update: {int((datetime.now() - self.latest_update_came_at).total_seconds())} seconds ago"
+        print(f"\x1b]0;{s}\x07", end='')
 
     async def connect(self):
         await self.kc.connect()
@@ -70,10 +86,14 @@ class KodiControlledPlayer:
             if message:
                 await self.handler(message)
             time.sleep(EVERY)
-            self.counter += EVERY
-            if self.counter > UPDATE_INTERVAL:
-                self.counter = 0
+            self.update_library_counter += EVERY
+            self.update_title_counter += EVERY
+            if self.update_library_counter > UPDATE_INTERVAL:
+                self.update_library_counter = 0
                 await self.update()
+            if self.update_title_counter > 1:
+                self.update_title_counter = 0
+                self.print_title()
 
     def find_id(self, content, id_name, lf_title, append_print):
         print(f"Looking for: {lf_title}")
@@ -92,16 +112,25 @@ class KodiControlledPlayer:
     def is_season_episode(self, command):
         return bool(sxex.match(command.lower()))
 
+    def status_update(self, status):
+        self.players[status['identifier']] = status
+        self.latest_update_came_at = datetime.now()
+        self.print_title()
+
     async def handler(self, message):
         data = message['data']
         if isinstance(data, int):
             return
         data = str(data.decode('utf-8'))
         args = data.split(" ")
-        print(args)
         try:
             if len(args) == 0:
                 return
+            if args[0] == "status":
+                status = json.loads(data.replace(f"{args[0]} ", ""))
+                self.status_update(status)
+                return
+            print(args)
             if args[0] == "play":  # play
                 await self.kodi.play()
             if args[0] == "pause":
@@ -137,7 +166,6 @@ class KodiControlledPlayer:
                         await engage_lock()
                         await self.kodi.media_seek(0)
                         return
-
         except Exception:
             print(traceback.format_exc())
 

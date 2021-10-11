@@ -1,3 +1,4 @@
+import json
 from abc import abstractmethod
 from enum import Enum
 
@@ -42,6 +43,10 @@ class MediaPlayer:
     def get_identifier(self) -> str:
         pass
 
+    @abstractmethod
+    def get_simplified_identifier(self) -> str:
+        pass
+
     def before_update(self):
         print(f"[{self.get_identifier()}] [{self.get_media_title()}: {self.get_state()} - {self.get_media_position()}]",
               end='')
@@ -58,6 +63,7 @@ class MediaPlayer:
         self.before_update()
         self.ab_update(*args)
         self.after_update()
+        redis_populate.r.publish("saine", "status " + json.dumps(self.get_media_json()))
 
     def is_playing(self):
         return self.get_state() == PlayerState.PLAYING
@@ -67,7 +73,8 @@ class MediaPlayer:
 
     def get_media_json(self):
         return {"title": self.get_media_title(), "position": self.get_media_position(),
-                "state": self.get_state().value, "duration": self.get_media_duration()}
+                "state": self.get_state().name, "duration": self.get_media_duration(),
+                "identifier": self.get_simplified_identifier()}
 
 
 class ControllableMediaPlayer:
@@ -105,7 +112,7 @@ class PlexPlayer(MediaPlayer, ControllableMediaPlayer):
             self.state = PlayerState.PAUSED
         else:
             self.state = PlayerState.UNKNOWN
-        self.position = position / 1000
+        self.position = position
         self.rating_key = rating_key
 
     def set_session(self, session):
@@ -138,10 +145,10 @@ class PlexPlayer(MediaPlayer, ControllableMediaPlayer):
         return self.title
 
     def get_media_duration(self) -> float:
-        return self.duration
+        return self.duration / 1000
 
     def get_media_position(self) -> float:
-        return self.position
+        return self.position / 1000
 
     def get_key(self) -> str:
         return self.session_key
@@ -151,6 +158,9 @@ class PlexPlayer(MediaPlayer, ControllableMediaPlayer):
 
     def get_identifier(self) -> str:
         return f"{self.product} {self.platform} {self.username}".lower()
+
+    def get_simplified_identifier(self) -> str:
+        return self.username
 
     def get_media(self):
         return self.session
