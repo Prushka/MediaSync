@@ -4,6 +4,7 @@ import re
 import time
 import traceback
 from datetime import datetime
+from difflib import SequenceMatcher
 from threading import Thread
 
 import redis
@@ -16,7 +17,7 @@ r = redis.Redis(host='cloud.muddy.ca', port=6399, db=0, password="vWw@U4mzCw2am0
 
 lock = False
 EVERY = 0.1
-UPDATE_INTERVAL = 3600
+UPDATE_INTERVAL = 600
 
 sxex = re.compile("^(s\d+e\d+)$")
 
@@ -31,6 +32,10 @@ def similar(a, b):
             score += 1
     # print(a, b, score)
     return score
+
+
+def similar_seq(a, b):
+    return SequenceMatcher(None, a, b).ratio()
 
 
 async def engage_lock():
@@ -64,7 +69,7 @@ class KodiControlledPlayer:
     def print_title(self):
         s = ""
         for key, value in self.players.items():
-            view_percentage = round(int(value['position']) / int(value['duration'])*100, 1)
+            view_percentage = round(int(value['position']) / int(value['duration']) * 100, 1)
             s += f"[{key} {value['state']}:{value['title']} {view_percentage}%] "
         s += f"Last Update: {int((datetime.now() - self.latest_update_came_at).total_seconds())} seconds ago"
         print(f"\x1b]0;{s}\x07", end='')
@@ -97,17 +102,34 @@ class KodiControlledPlayer:
 
     def find_id(self, content, id_name, lf_title, append_print):
         print(f"Looking for: {lf_title}")
+
         sim = 0
         cid = 0
         title = ""
+        results = {}
         for c in content:
             t_sim = similar(c['label'], lf_title)
-            if t_sim > sim:
-                sim = t_sim
-                cid = int(c[id_name])
-                title = c['label']
-        print(f"Found, highest matching score: {title}, {sim} {append_print}")
-        return cid
+            results[c[id_name]] = [t_sim, c['label']]
+            # if t_sim > sim:
+            #     sim = t_sim
+            #     cid = int(c[id_name])
+            #     title = c['label']
+        results = dict(sorted(results.items(), key=lambda item: item[1][0], reverse=True))
+        highest_sim = next(iter(results.values()))[0]
+        if highest_sim == 0:
+            print("Unable to find anything")
+            return -1
+        for key, value in results.items():
+            if value[0] == highest_sim:
+                t_sim = similar_seq(value[1], lf_title)
+                if t_sim > sim:
+                    sim = t_sim
+                    cid = int(key)
+                    title = value[1]
+            else:
+                print(
+                    f"Found, highest matching score: {title}, Id: {cid} , simple: {highest_sim} | seq: {sim} {append_print}")
+                return cid
 
     def is_season_episode(self, command):
         return bool(sxex.match(command.lower()))
@@ -138,10 +160,15 @@ class KodiControlledPlayer:
             elif args[0] == "seek":
                 if len(args) == 2 and not lock:
                     await self.kodi.media_seek(int(args[1]))
+            elif args[0] == "vol":
+                if len(args) == 2:
+                    await self.kodi.set_volume_level(int(args[1]))  # 0 - 100
             elif args[0] == "movie":
                 if len(args) == 1:
                     return
                 mid = self.find_id(self.movies["movies"], "movieid", data.replace(f"{args[0]} ", ""), "")
+                if mid == -1:
+                    return
                 await self.kodi.play_item({"movieid": mid})
                 await engage_lock()
                 await self.kodi.media_seek(0)
@@ -159,6 +186,8 @@ class KodiControlledPlayer:
                     lf_title = data.replace(f"{args[0]} {args[1]} {args[2]} ", "")
                 tid = self.find_id(self.tvshows["tvshows"], "tvshowid", lf_title,
                                    f"| will navigate to season {lf_season} episode {lf_episode}")
+                if tid == -1:
+                    return
                 episodes = await self.kodi.get_episodes(tid, int(lf_season))
                 for episode in episodes['episodes']:
                     if str(lf_episode) in episode['label'][1:5]:
