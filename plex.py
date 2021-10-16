@@ -8,7 +8,7 @@ import redis_populate
 import settings
 from MediaPlayer import PlexPlayer
 
-baseurl = 'http://marnie:32400'
+baseurl = 'http://192.168.50.177:32400'
 token = 'Cn55vSNPf-BDLyz7JQ3-'
 plex_server = PlexServer(baseurl, token)
 

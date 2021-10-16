@@ -6,6 +6,7 @@ import traceback
 from datetime import datetime
 from difflib import SequenceMatcher
 from threading import Thread
+from typing import List
 
 import redis
 from pykodi import get_kodi_connection, Kodi
@@ -53,18 +54,30 @@ def get_args(s):
     return re.findall('\[(.+?)]', s)
 
 
-class KodiControlledPlayer:
+class PlayerCluster:
     def __init__(self):
-        self.kc = get_kodi_connection("localhost", "8080", None, "kodi", "0723")
         self.update_library_counter = 0
         self.update_title_counter = 0
         self.players = {}
         self.latest_update_came_at = datetime.now()
+        self.kodi_players: List[KodiControlledPlayer] = []
 
-    async def update(self):
-        self.movies = await self.kodi.get_movies()
-        self.tvshows = await self.kodi.get_tv_shows()
-        # eprint(f"Fetched: {self.movies['limits']['total']} Movies & {self.tvshows['limits']['total']} Shows")
+    async def run(self):
+        await self.connect_target("localhost", "8080", "kodi", "0723"),
+        await self.connect_target("192.168.50.196", "8080", "kodi", "0723")
+        await self.waiting_signals()
+
+    async def connect_target(self, ip: str, port: str, username: str, password: str):
+        print("Connecting: " + ip)
+        kc = get_kodi_connection(ip, port, None, username, password)
+        await kc.connect()
+        kodi = Kodi(kc)
+        await kodi.ping()
+        properties = await kodi.get_application_properties(["name", "version"])
+        print(properties)
+        k_player = KodiControlledPlayer(kc, kodi)
+        await k_player.update()
+        self.kodi_players.append(k_player)
 
     def print_title(self):
         s = ""
@@ -74,18 +87,32 @@ class KodiControlledPlayer:
         s += f"Last Update: {int((datetime.now() - self.latest_update_came_at).total_seconds())} seconds ago"
         print(f"\x1b]0;{s}\x07", end='')
 
-    async def connect(self):
-        await self.kc.connect()
-        self.kodi = Kodi(self.kc)
-        await self.kodi.ping()
-        properties = await self.kodi.get_application_properties(["name", "version"])
-        print(properties)
-        await self.update()
+    async def handler(self, message):
+        data = message['data']
+        if isinstance(data, int):
+            return
+        data = str(data.decode('utf-8'))
+        args = data.split(" ")
+        if len(args) == 0:
+            return
+        if args[0] == "status":
+            status = json.loads(data.replace(f"{args[0]} ", ""))
+            self.status_update(status)
+            return
+        print(args)
+        for k in self.kodi_players:
+            await k.handler(args, data)
+
+    def status_update(self, status):
+        self.players[status['identifier']] = status
+        self.latest_update_came_at = datetime.now()
+        self.print_title()
 
     async def waiting_signals(self):
         while True:
             if do_exit:
-                await self.kc.close()
+                for k in self.kodi_players:
+                    await k.kc.close()
                 return
             message = p.get_message()
             if message:
@@ -94,15 +121,27 @@ class KodiControlledPlayer:
             self.update_library_counter += EVERY
             self.update_title_counter += EVERY
             if self.update_library_counter > UPDATE_INTERVAL:
+                print("updating")
                 self.update_library_counter = 0
-                await self.update()
+                for k in self.kodi_players:
+                    await k.update()
             if self.update_title_counter > 1:
                 self.update_title_counter = 0
                 self.print_title()
 
+
+class KodiControlledPlayer:
+    def __init__(self, kc, kodi):
+        self.kodi = kodi
+        self.kc = kc
+
+    async def update(self):
+        self.movies = await self.kodi.get_movies()
+        self.tvshows = await self.kodi.get_tv_shows()
+        # eprint(f"Fetched: {self.movies['limits']['total']} Movies & {self.tvshows['limits']['total']} Shows")
+
     def find_id(self, content, id_name, lf_title, append_print):
         print(f"Looking for: {lf_title}")
-
         sim = 0
         cid = 0
         title = ""
@@ -110,10 +149,6 @@ class KodiControlledPlayer:
         for c in content:
             t_sim = similar(c['label'], lf_title)
             results[c[id_name]] = [t_sim, c['label']]
-            # if t_sim > sim:
-            #     sim = t_sim
-            #     cid = int(c[id_name])
-            #     title = c['label']
         results = dict(sorted(results.items(), key=lambda item: item[1][0], reverse=True))
         highest_sim = next(iter(results.values()))[0]
         if highest_sim == 0:
@@ -134,25 +169,8 @@ class KodiControlledPlayer:
     def is_season_episode(self, command):
         return bool(sxex.match(command.lower()))
 
-    def status_update(self, status):
-        self.players[status['identifier']] = status
-        self.latest_update_came_at = datetime.now()
-        self.print_title()
-
-    async def handler(self, message):
-        data = message['data']
-        if isinstance(data, int):
-            return
-        data = str(data.decode('utf-8'))
-        args = data.split(" ")
+    async def handler(self, args, data):
         try:
-            if len(args) == 0:
-                return
-            if args[0] == "status":
-                status = json.loads(data.replace(f"{args[0]} ", ""))
-                self.status_update(status)
-                return
-            print(args)
             if args[0] == "play":  # play
                 await self.kodi.play()
             if args[0] == "pause":
@@ -229,12 +247,9 @@ if __name__ == '__main__':
     print_help()
     p = r.pubsub()
     p.subscribe("saine")
-
     thread_a = Thread(target=inputs, daemon=False)
     thread_a.start()
 
-    k_player = KodiControlledPlayer()
-
+    manager = PlayerCluster()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(k_player.connect())
-    loop.run_until_complete(k_player.waiting_signals())
+    loop.run_until_complete(manager.run())
