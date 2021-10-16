@@ -1,6 +1,7 @@
 import json
 from abc import abstractmethod
 from enum import Enum
+from pprint import pprint
 
 from plexapi.client import PlexClient
 from plexapi.media import Session, Media
@@ -122,10 +123,11 @@ class PlexPlayer(MediaPlayer, ControllableMediaPlayer):
         self.session: Session = session
         self.product = session.players[0].product
         self.platform = session.players[0].platform
+        self.platform_title = session.players[0].title
         self.username = session.usernames[0]
         self.client: PlexClient = session.players[0]
         self.client.proxyThroughServer()
-        # pprint(vars(session))
+        # pprint(vars(session.players[0]))
         self.state = PlayerState.UNKNOWN
         self.position = 0
         self.rating_key = -1
@@ -157,10 +159,10 @@ class PlexPlayer(MediaPlayer, ControllableMediaPlayer):
         return self.state
 
     def get_identifier(self) -> str:
-        return f"{self.product} {self.platform} {self.username}".lower()
+        return f"{self.product} {self.platform} {self.platform_title} {self.username}".lower()
 
     def get_simplified_identifier(self) -> str:
-        return self.username
+        return f"{self.username} {self.platform_title}"
 
     def get_media(self):
         return self.session
