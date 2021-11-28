@@ -23,8 +23,9 @@ UPDATE_INTERVAL = 600
 sxex = re.compile("^(s\d+e\d+)$")
 
 
-def similar(a, b):
-    # return SequenceMatcher(None, a, b).ratio()
+def similar(a, b, use_seq=False):
+    if use_seq:
+        return SequenceMatcher(None, a, b).ratio()
     score = 0
     b = b.lower()
     a = a.lower()
@@ -35,8 +36,8 @@ def similar(a, b):
     return score
 
 
-def similar_seq(a, b):
-    return SequenceMatcher(None, a, b).ratio()
+def is_season_episode(command):
+    return bool(sxex.match(command.lower()))
 
 
 async def engage_lock():
@@ -49,11 +50,6 @@ async def engage_lock():
         # print(f"{'-' * 5}unlocked{'-' * 5}")
 
 
-def get_args(s):
-    print(s)
-    return re.findall('\[(.+?)]', s)
-
-
 class PlayerCluster:
     def __init__(self):
         self.update_library_counter = 0
@@ -64,11 +60,10 @@ class PlayerCluster:
 
     async def run(self):
         await self.connect_target("localhost", "8080", "kodi", "0723"),
-        await self.connect_target("192.168.50.196", "8080", "kodi", "0723")
+        # await self.connect_target("192.168.50.196", "8080", "kodi", "0723")
         await self.waiting_signals()
 
     async def connect_target(self, ip: str, port: str, username: str, password: str):
-        print("Connecting: " + ip)
         kc = get_kodi_connection(ip, port, None, username, password)
         await kc.connect()
         kodi = Kodi(kc)
@@ -78,6 +73,7 @@ class PlayerCluster:
         k_player = KodiControlledPlayer(kc, kodi)
         await k_player.update()
         self.kodi_players.append(k_player)
+        print("Connected: " + ip)
 
     def print_title(self):
         s = ""
@@ -121,7 +117,6 @@ class PlayerCluster:
             self.update_library_counter += EVERY
             self.update_title_counter += EVERY
             if self.update_library_counter > UPDATE_INTERVAL:
-                print("updating")
                 self.update_library_counter = 0
                 for k in self.kodi_players:
                     await k.update()
@@ -138,7 +133,7 @@ class KodiControlledPlayer:
     async def update(self):
         self.movies = await self.kodi.get_movies()
         self.tvshows = await self.kodi.get_tv_shows()
-        # eprint(f"Fetched: {self.movies['limits']['total']} Movies & {self.tvshows['limits']['total']} Shows")
+        # print(f"Fetched: {self.movies['limits']['total']} Movies & {self.tvshows['limits']['total']} Shows")
 
     def find_id(self, content, id_name, lf_title, append_print):
         print(f"Looking for: {lf_title}")
@@ -156,7 +151,7 @@ class KodiControlledPlayer:
             return -1
         for key, value in results.items():
             if value[0] == highest_sim:
-                t_sim = similar_seq(value[1], lf_title)
+                t_sim = similar(value[1], lf_title, True)
                 if t_sim > sim:
                     sim = t_sim
                     cid = int(key)
@@ -165,9 +160,6 @@ class KodiControlledPlayer:
                 print(
                     f"Found, highest matching score: {title}, Id: {cid} , simple: {highest_sim} | seq: {sim} {append_print}")
                 return cid
-
-    def is_season_episode(self, command):
-        return bool(sxex.match(command.lower()))
 
     async def handler(self, args, data):
         try:
@@ -190,10 +182,10 @@ class KodiControlledPlayer:
                 await self.kodi.play_item({"movieid": mid})
                 await engage_lock()
                 await self.kodi.media_seek(0)
-            elif args[0] == "show" or self.is_season_episode(args[0]):
+            elif args[0] == "show" or is_season_episode(args[0]):
                 if len(args) < 2:
                     return
-                if self.is_season_episode(args[0]):
+                if is_season_episode(args[0]):
                     m = re.findall(r'\d+', args[0])
                     lf_season = m[0]
                     lf_episode = m[1]
@@ -245,8 +237,10 @@ do_exit = False
 
 if __name__ == '__main__':
     print_help()
+
     p = r.pubsub()
     p.subscribe("saine")
+
     thread_a = Thread(target=inputs, daemon=False)
     thread_a.start()
 

@@ -1,1 +1,0 @@
-python plex_control.py
