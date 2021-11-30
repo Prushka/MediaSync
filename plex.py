@@ -117,8 +117,8 @@ def start():
         if len(previous_error) >= 7:
             for i in range(-7, -1): # -7, -6, -5, -4, -3, -2
                 print(f"Last Error: {(previous_error[-1]-previous_error[i]).total_seconds()} secs ago")
-                if (previous_error[-1]-previous_error[i]).total_seconds() >= 3600:
-                    # one of the previous 6 errors occurred more than one hour ago, give it another try
+                if (previous_error[-1]-previous_error[i]).total_seconds() >= 1800:
+                    # one of the previous 6 errors occurred more than 30 mins ago, give it another try
                     time.sleep(20)
                     start()
             exit(-1)
