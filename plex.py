@@ -1,4 +1,7 @@
 import asyncio
+import time
+import traceback
+from datetime import datetime
 
 from plexapi.media import Session
 from plexapi.server import PlexServer
@@ -62,8 +65,8 @@ def update_session(payload):
     for p in settings.plexPlayers.values():
         try:
             p.sync_with(player)
-        except Exception as e:
-            print(e)
+        except Exception:
+            print(traceback.format_exc())
     return
 
 
@@ -102,10 +105,29 @@ async def main():
     await asyncio.gather(*input_coroutines, return_exceptions=True)
 
 
+def start():
+    try:
+        redis_populate.flush()
+        settings.init()
+        settings.loop.run_until_complete(main())
+    except Exception:
+        print(traceback.format_exc())
+        previous_error.append(datetime.now())
+        print(f"Error Occurred: {previous_error[-1]}")
+        if len(previous_error) >= 7:
+            for i in range(-7, -1): # -7, -6, -5, -4, -3, -2
+                print(f"Last Error: {(previous_error[-1]-previous_error[i]).total_seconds()} secs ago")
+                if (previous_error[-1]-previous_error[i]).total_seconds() >= 3600:
+                    # one of the previous 6 errors occurred more than one hour ago, give it another try
+                    time.sleep(20)
+                    start()
+            exit(-1)
+        time.sleep(20)
+        start()
+
+
 if __name__ == '__main__':
     # account = MyPlexAccount('szcezliwy@hotmail.com', 'NeQC[N4%Myd6-kc*')
     # saine = account.resource('marnie').connect()  # returns a PlexServer instance
-
-    redis_populate.flush()
-    settings.init()
-    settings.loop.run_until_complete(main())
+    previous_error = []
+    start()
