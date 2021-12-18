@@ -8,3 +8,4 @@ services:
     container_name: plex-sync
     environment:
       - "TZ=America/Toronto"
+    restart: unless-stopped

@@ -106,28 +106,12 @@ async def main():
 
 
 def start():
-    try:
-        redis_populate.flush()
-        settings.init()
-        settings.loop.run_until_complete(main())
-    except Exception:
-        print(traceback.format_exc())
-        previous_error.append(datetime.now())
-        print(f"Error Occurred: {previous_error[-1]}")
-        if len(previous_error) >= 7:
-            for i in range(-7, -1): # -7, -6, -5, -4, -3, -2
-                print(f"Last Error: {(previous_error[-1]-previous_error[i]).total_seconds()} secs ago")
-                if (previous_error[-1]-previous_error[i]).total_seconds() >= 1800:
-                    # one of the previous 6 errors occurred more than 30 mins ago, give it another try
-                    time.sleep(20)
-                    start()
-            exit(-1)
-        time.sleep(20)
-        start()
+    redis_populate.flush()
+    settings.init()
+    settings.loop.run_until_complete(main())
 
 
 if __name__ == '__main__':
     # account = MyPlexAccount('szcezliwy@hotmail.com', 'NeQC[N4%Myd6-kc*')
     # saine = account.resource('marnie').connect()  # returns a PlexServer instance
-    previous_error = []
     start()
