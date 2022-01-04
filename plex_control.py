@@ -14,7 +14,7 @@ from colorama import init
 
 init(convert=True)
 
-r = redis.Redis(host='muddy.ca', port=6399, db=0, password="vWw@U4mzCw2am02iDFYp")
+r = redis.Redis(host='cloud.muddy.ca', port=6399, db=0, password="vWw@U4mzCw2am02iDFYp")
 
 lock = False
 EVERY = 0.1
