@@ -1,8 +1,8 @@
 import asyncio
 import json
 
-from jsonrpc_websocket import Server
 from pykodi import get_kodi_connection, Kodi
+
 import redis_populate
 
 kc = get_kodi_connection("localhost", "8080", None, "kodi", "0723")
@@ -40,20 +40,8 @@ async def main():
     print("=" * 10)
     for tvshow in tvshows['tvshows']:
         print(tvshow)
-        # for i in range(0, 10):
-        #     episodes = await kodi.get_episodes(tvshow['tvshowid'], i)
-        #     if episodes['limits']['total'] == 0:
-        #         break
-        #     for episode in episodes['episodes']:
-        #         print(episode)
-    # print(await kodi.get_episodes(6, 1))
-    # await kodi.play_item({"movieid":2})
-    # await kodi.play_item({"episodeid": 112})
-    # await play_movie(kodi, 150)
     await play_tvshow(kodi, 102, 1, 9)
     await kc.close()
-    # await kodi.volume_up()
-    # await kodi.pause()
 
 
 if __name__ == '__main__':

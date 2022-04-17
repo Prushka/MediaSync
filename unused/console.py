@@ -9,7 +9,8 @@ def download(number):
 def completed(percent):
     print("({:1.1}% Completed)".format(percent))
 
-for i in range(1,4):
-    download(i)
-    completed(i/10)
-    sleep(1)
+if __name__ == '__main__':
+    for i in range(1, 4):
+        download(i)
+        completed(i / 10)
+        sleep(1)

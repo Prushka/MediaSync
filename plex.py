@@ -1,7 +1,5 @@
 import asyncio
-import time
 import traceback
-from datetime import datetime
 
 from plexapi.media import Session
 from plexapi.server import PlexServer
@@ -10,8 +8,6 @@ from plexwebsocket import PlexWebsocket, SIGNAL_CONNECTION_STATE, STATE_CONNECTE
 import redis_populate
 import settings
 from MediaPlayer import PlexPlayer
-
-# TODO: Restarting the plex server will make the script crash
 
 baseurl = 'http://192.168.50.177:32400'
 token = 'Cn55vSNPf-BDLyz7JQ3-'
@@ -44,24 +40,6 @@ def update_session(payload):
         return
 
     player.update(state, offset, rating_key)
-
-    # if not player.compare_rating_key(rating_key):
-    #     fetch_new_sessions()
-    # if not player.compare_rating_key(rating_key):
-    #     print(f"cannot find session with rating key, websocket: {session_key}, rating: {rating_key}")
-
-    # if not (player.is_infuse_tvos() or not settings.has_initialized()):
-    #     if player.is_valid_state():
-    #         if settings.atv.is_playing() and player.is_paused():
-    #             settings.atv.pause()
-    #         elif settings.atv.is_paused() and player.is_playing():
-    #             settings.atv.resume()
-
-    #     if player.get_media_position() is None or settings.atv.get_media_position() is None:
-    #         return
-    #     if abs(player.get_media_position() - settings.atv.get_media_position()) > 15:
-    #         # seek atv to match
-    #         settings.atv.seek(player.get_media_position())
     for p in settings.plexPlayers.values():
         try:
             p.sync_with(player)
